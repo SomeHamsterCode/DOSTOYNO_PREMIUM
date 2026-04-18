@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#7f2aff">
+    <title>ДОСТОЙНО | ЕГЭ Русский Язык</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Toast уведомления -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Экран онбординга -->
+    <div id="page-onboarding" class="page active full-screen-bg">
+        <div class="onboarding-content">
+            <div class="logo-area">
+                <div class="logo-dostoino">
+                    <img src="assets/images/DOSTOYNO.png" alt="ДОСТОЙНО" style="width: 100%; height: auto;">
+                </div>
+                <p class="main-slogan">Играть с ЕГЭ? Это же ДОСТОЙНО.</p>
+            </div>
+            
+            <div class="avatar-setup">
+                <div class="avatar-preview-large" id="startAvatar">🧑‍🎓</div>
+                
+                <div class="input-group">
+                    <label>Имя персонажа</label>
+                    <input type="text" id="usernameInput" placeholder="Например: Алекс" maxlength="12">
+                </div>
+                
+                <button class="btn-primary btn-large" onclick="startGame()">
+                    Начать обучение <span class="material-icons">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной интерфейс -->
+    <div id="app-interface" style="display: none;">
+        
+        <!-- Верхняя панель -->
+        <header class="top-bar">
+            <div class="user-info">
+                <div class="mini-avatar glow-effect" id="headerAvatar">🧑‍🎓</div>
+                <div class="user-details">
+                    <span id="headerName">Student</span>
+                    <div class="level-badge">LVL <span id="headerLevel">1</span> • <span id="headerXP">0</span> XP</div>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-pill fire glow-effect">
+                    <span class="material-icons">local_fire_department</span> 
+                    <span id="streakDisplay">0</span>
+                </div>
+                <div class="stat-pill coins glow-effect">
+                    <span class="material-icons">toll</span> 
+                    <span id="coinDisplay">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Контейнер страниц -->
+        <main class="main-content">
+            
+            <!-- 1. Дорожная карта -->
+            <div id="page-roadmap" class="page">
+                <div class="page-header">
+                    <h2>Дорожная карта</h2>
+                    <p>Орфография • Путь к идеальному ЕГЭ: Задания 9-15</p>
+                </div>
+                
+                <div class="roadmap-banner glass-panel glow-border">
+                    <div class="banner-content">
+                        <span class="gold-badge"><span class="material-icons">star</span> GOLD ×3</span>
+                        <p>Пройди задание 3 раза идеально для золота</p>
+                    </div>
+                </div>
+                
+                <div class="roadmap-container" id="roadmapContainer">
+                    <svg class="roadmap-path-svg" id="roadmapPathSVG">
+                        <defs>
+                            <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#7f2aff;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#b380ff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#7f2aff;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path id="roadmapPath" d="" stroke="url(#pathGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <div id="roadmapNodes"></div>
+                </div>
+                
+                <div class="locked-notice">
+                    <p><span class="material-icons">lock</span> Задания 13, 14 и 15 открываются после прохождения текущего блока</p>
+                </div>
+            </div>
+
+            <!-- 2. Экран квиза -->
+            <div id="page-quiz" class="page">
+                <div class="quiz-header-bar glass-panel glow-border">
+                    <button class="btn-icon" onclick="navTo('roadmap')"><span class="material-icons">close</span></button>
+                    <span>Вопрос <span id="quizCurrent">1</span> из <span id="quizTotal">10</span></span>
+                    <span class="streak-mini"><span class="material-icons">local_fire_department</span> <span id="quizStreak">0</span></span>
+                </div>
+                
+                <div class="quiz-card glass-panel glow-border">
+                    <div class="quiz-topic">Задание <span id="quizTaskNum">10</span></div>
+                    <h3 id="questionText" class="question-text"></h3>
+                    <div id="optionsContainer" class="options-grid"></div>
+
+                    <div id="quizResult" class="quiz-result hidden">
+                        <div class="result-icon">✅</div>
+                        <h4>Отлично!</h4>
+                        <p id="resultText">Вы правильно определили ряды с приставками.</p>
+                        <button class="btn-secondary" onclick="showExplanation()">📖 Пояснение</button>
+                    </div>
+
+                    <div class="quiz-actions">
+                        <button class="btn-primary" id="checkAnswerBtn" onclick="checkAnswer()">Проверить</button>
+                        <button class="btn-primary" id="nextQuestionBtn" onclick="nextQuestion()" style="display:none;">
+                            Продолжить <span class="material-icons">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Город -->
+            <div id="page-city" class="page">
+                <div class="page-header">
+                    <h2><span class="material-icons">domain</span> Мой город</h2>
+                    <p>Развивай город, проходя задания</p>
+                </div>
+                
+                <div class="city-stats-card glass-panel glow-border">
+                    <div class="stat-big">
+                        <span class="label">Доход</span>
+                        <span class="value" id="cityIncome">0 🪙/сек</span>
+                    </div>
+                    <div class="stat-big">
+                        <span class="label">Казна</span>
+                        <span class="value" id="cityBalance">0 🪙</span>
+                    </div>
+                </div>
+                
+                <div class="city-map-container glass-panel glow-border">
+                    <div class="map-header">
+                        <h3><span class="material-icons">map</span> Карта города</h3>
+                        <div class="map-controls">
+                            <button class="map-btn" onclick="zoomMap(1)"><span class="material-icons">add</span></button>
+                            <button class="map-btn" onclick="zoomMap(-1)"><span class="material-icons">remove</span></button>
+                            <button class="map-btn" onclick="resetMap()"><span class="material-icons">refresh</span></button>
+                        </div>
+                    </div>
+                    <div id="cityMap" class="city-map">
+                        <div class="map-grid" id="mapGrid"></div>
+                    </div>
+                    <div class="map-legend">
+                        <span class="legend-item"><span class="legend-dot" style="background:#7f2aff"></span> Ваше здание</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#e0e0e0"></span> Пустой участок</span>
+                    </div>
+                </div>
+                
+                <h3 style="margin: 20px 0 10px;"><span class="material-icons">shopping_bag</span> Магазин зданий</h3>
+                <div class="buildings-grid" id="buildingsGrid"></div>
+            </div>
+
+            <!-- 4. Магазин -->
+            <div id="page-shop" class="page">
+                <div class="page-header">
+                    <h2><span class="material-icons">checkroom</span> Гардероб</h2>
+                    <p>Кастомизация и бонусы к доходу</p>
+                </div>
+                
+                <div class="shop-layout">
+                    <div class="shop-preview glass-panel glow-border">
+                        <div class="avatar-preview-large glow-effect" id="shopAvatarPreview">🧑‍🎓</div>
+                        <div class="bonus-tag">
+                            <span class="material-icons">trending_up</span>
+                            Доход в секунду <span id="avatarBonus">+4.5</span> 🪙
+                        </div>
+                    </div>
+                    
+                    <div class="shop-tabs">
+                        <div class="tab active" onclick="filterShop('all')"><span class="material-icons">apps</span> Все</div>
+                        <div class="tab" onclick="filterShop('hair')"><span class="material-icons">face</span> Прически</div>
+                        <div class="tab" onclick="filterShop('clothes')"><span class="material-icons">checkroom</span> Одежда</div>
+                        <div class="tab" onclick="filterShop('acc')"><span class="material-icons">watch</span> Аксессуары</div>
+                    </div>
+                    
+                    <div class="shop-header">
+                        <span id="shopCount">24 предмета</span>
+                        <div class="shop-actions">
+                            <button class="btn-icon" onclick="saveAvatar()"><span class="material-icons">save</span></button>
+                            <button class="btn-icon" onclick="resetAvatar()"><span class="material-icons">refresh</span></button>
+                        </div>
+                    </div>
+                    
+                    <div class="shop-grid" id="shopGrid"></div>
+                </div>
+            </div>
+
+            <!-- 5. Профиль -->
+            <div id="page-profile" class="page">
+                <div class="profile-header glass-panel glow-border">
+                    <div class="avatar-preview-large glow-effect" id="profileAvatar">🧑‍🎓</div>
+                    <h2 id="profileName">Student</h2>
+                    <div class="rank-badge">ДОСТОЙНО</div>
+                    
+                    <div class="xp-section">
+                        <div class="xp-label"><span id="profileXp">0</span> / 100 XP до следующего уровня</div>
+                        <div class="xp-bar-container">
+                            <div class="xp-bar-fill" id="xpFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="achievements-card glass-panel glow-border">
+                    <h3><span class="material-icons">emoji_events</span> Ачивки</h3>
+                    <div class="achievements-list" id="achievementsList"></div>
+                </div>
+                
+                <div class="settings-card glass-panel glow-border">
+                    <h3><span class="material-icons">settings</span> Настройки</h3>
+                    <button class="btn-danger" onclick="resetProgress()"><span class="material-icons">delete</span> Сбросить прогресс</button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Нижняя навигация -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="navTo('roadmap')">
+                <span class="material-icons icon">map</span>
+                <span>Карта</span>
+            </div>
+            <div class="nav-item" onclick="navTo('city')">
+                <span class="material-icons icon">domain</span>
+                <span>Город</span>
+            </div>
+            <div class="nav-item" onclick="navTo('shop')">
+                <span class="material-icons icon">checkroom</span>
+                <span>Шоп</span>
+            </div>
+            <div class="nav-item" onclick="navTo('profile')">
+                <span class="material-icons icon">person</span>
+                <span>Профиль</span>
+            </div>
+        </nav>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
