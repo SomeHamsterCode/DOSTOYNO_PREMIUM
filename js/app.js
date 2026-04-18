@@ -100,7 +100,15 @@ let state = {
     soundEnabled: true,
     notificationsEnabled: true,
     mapZoom: 1,
-    buildingPositions: {}
+    buildingPositions: {},
+    
+    // ➕ НОВЫЕ ПОЛЯ: Ограниченные ресурсы
+    lives: 5,              // текущие жизни
+    maxLives: 5,           // максимум жизней
+    energy: 100,           // текущая энергия
+    maxEnergy: 100,        // максимум энергии
+    lastEnergyRegen: Date.now(),  // для регенерации
+    lastLivesRegen: Date.now(),   // для регенерации
 };
 
 // ============================================
