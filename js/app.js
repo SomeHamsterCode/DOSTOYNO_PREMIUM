@@ -1,10 +1,10 @@
 /**
  * ДОСТОЙНО - ЕГЭ по русскому языку с геймификацией
- * Версия 5.0 - Система жизней и энергии
+ * Версия 5.1 - Бесконечные жизни и энергия
  */
 
 // ============================================
-// БЕЗОПАСНОЕ СОХРАНЕНИЕ (с обработкой ошибок)
+// БЕЗОПАСНОЕ СОХРАНЕНИЕ
 // ============================================
 function safeSave(key, data) {
     try {
@@ -99,14 +99,11 @@ let state = {
     mapZoom: 1,
     buildingPositions: {},
     
-    // 🔋 НОВЫЕ ПОЛЯ: Система жизней и энергии
-    lives: 5,
-    maxLives: 5,
-    energy: 100,
-    maxEnergy: 100,
-    lastEnergyRegen: Date.now(),
-    lastLivesRegen: Date.now(),
-    lastDailyEnergy: null
+    // 🔋 Бесконечные ресурсы
+    lives: 999,
+    maxLives: 999,
+    energy: 999,
+    maxEnergy: 999
 };
 
 // ============================================
@@ -114,58 +111,35 @@ let state = {
 // ============================================
 function init() {
     console.log('🚀 Инициализация приложения...');
-    
     try {
         const saved = safeLoad('dostoino_save_v4');
-        console.log('💾 Загруженные данные:', saved);
-        
         if (saved) {
             state = { ...state, ...saved };
-            console.log('✅ Данные загружены');
             
-            // ➕ Миграция: добавляем новые поля для старых сохранений
-            if (state.lives === undefined) state.lives = 5;
-            if (state.maxLives === undefined) state.maxLives = 5;
-            if (state.energy === undefined) state.energy = 100;
-            if (state.maxEnergy === undefined) state.maxEnergy = 100;
-            if (state.lastEnergyRegen === undefined) state.lastEnergyRegen = Date.now();
-            if (state.lastLivesRegen === undefined) state.lastLivesRegen = Date.now();
+            // Миграция для старых сохранений
+            if (state.lives === undefined) state.lives = 999;
+            if (state.energy === undefined) state.energy = 999;
             
             const onboarding = document.getElementById('page-onboarding');
             const appInterface = document.getElementById('app-interface');
-            
             if (onboarding && appInterface) {
                 onboarding.style.display = 'none';
                 appInterface.style.display = 'block';
-                console.log('✅ Интерфейс переключен');
-            } else {
-                console.error('❌ Элементы интерфейса не найдены!');
             }
             
             updateUI();
             startGameLoop();
             checkDailyReward();
             navTo('roadmap');
-        } else {
-            console.log('ℹ️ Нет сохраненных данных, показываем онбординг');
         }
     } catch (e) {
         console.error('❌ Критическая ошибка инициализации:', e);
-        const onboarding = document.getElementById('page-onboarding');
-        const appInterface = document.getElementById('app-interface');
-        if (onboarding) onboarding.style.display = 'flex';
-        if (appInterface) appInterface.style.display = 'none';
     }
 }
 
 function saveGame() {
     try {
-        const success = safeSave('dostoino_save_v4', state);
-        if (success) {
-            console.log('✅ Игра сохранена');
-        } else {
-            console.warn('⚠️ Сохранено во временную память');
-        }
+        safeSave('dostoino_save_v4', state);
         updateUI();
     } catch (e) {
         console.error('❌ Ошибка сохранения:', e);
@@ -174,14 +148,8 @@ function saveGame() {
 }
 
 function startGame() {
-    console.log('🎮 Начало игры...');
-    
     const name = document.getElementById('usernameInput').value.trim();
-    if (!name) {
-        showToast('⚠️ Введите имя персонажа!');
-        return;
-    }
-    if (name.length < 2) {
+    if (!name || name.length < 2) {
         showToast('⚠️ Имя должно быть не менее 2 символов');
         return;
     }
@@ -190,26 +158,19 @@ function startGame() {
     state.lastLogin = new Date().toDateString();
     state.streak = 1;
     state.coins = 150;
-    state.lives = 5;
-    state.energy = 100;
-    state.lastEnergyRegen = Date.now();
-    state.lastLivesRegen = Date.now();
-    state.inventory = ['hair_default', 'cloth_default', 'acc_none'];
-    state.equipped = { hair: 'hair_default', clothes: 'cloth_default', acc: 'acc_none' };
+    state.lives = 999;
+    state.energy = 999;
     
     saveGame();
     
     const onboarding = document.getElementById('page-onboarding');
     const appInterface = document.getElementById('app-interface');
-    
     if (onboarding && appInterface) {
         onboarding.style.opacity = '0';
         setTimeout(() => {
             onboarding.style.display = 'none';
             appInterface.style.display = 'block';
-            setTimeout(() => {
-                appInterface.style.opacity = '1';
-            }, 50);
+            setTimeout(() => appInterface.style.opacity = '1', 50);
         }, 300);
     }
     
@@ -220,41 +181,18 @@ function startGame() {
 
 function resetProgress() {
     if (confirm('⚠️ Вы уверены? Весь прогресс будет удален безвозвратно.')) {
-        try {
-            localStorage.removeItem('dostoino_save_v4');
-        } catch (e) {
-            console.error('Ошибка очистки:', e);
-        }
+        try { localStorage.removeItem('dostoino_save_v4'); } catch(e) {}
         window.tempSave = {};
         location.reload();
     }
 }
 
 // ============================================
-// ИГРОВОЙ ЦИКЛ + РЕГЕНЕРАЦИЯ
+// ИГРОВОЙ ЦИКЛ (только доход города)
 // ============================================
 function startGameLoop() {
     setInterval(() => {
         try {
-            const now = Date.now();
-            
-            // ⚡ Регенерация энергии: +1 каждые 30 секунд
-            if (now - state.lastEnergyRegen >= 30000 && state.energy < state.maxEnergy) {
-                state.energy = Math.min(state.maxEnergy, state.energy + 1);
-                state.lastEnergyRegen = now;
-                updateUI();
-                saveGame();
-            }
-            
-            // ❤️ Регенерация жизней: +1 каждые 10 минут
-            if (now - state.lastLivesRegen >= 600000 && state.lives < state.maxLives) {
-                state.lives = Math.min(state.maxLives, state.lives + 1);
-                state.lastLivesRegen = now;
-                updateUI();
-                saveGame();
-            }
-            
-            // 💰 Доход от города
             const income = calculateIncome();
             if (income > 0) {
                 state.coins += income;
@@ -271,9 +209,7 @@ function calculateIncome() {
     let income = 0;
     try {
         DB.buildings.forEach(b => {
-            if (state.buildings[b.id]) {
-                income += (state.buildings[b.id].count * b.income);
-            }
+            if (state.buildings[b.id]) income += state.buildings[b.id].count * b.income;
         });
         ['hair', 'clothes', 'acc'].forEach(type => {
             if (state.equipped[type]) {
@@ -281,9 +217,7 @@ function calculateIncome() {
                 if (item) income += item.bonus;
             }
         });
-    } catch (e) {
-        console.error('Ошибка расчета дохода:', e);
-    }
+    } catch (e) { console.error(e); }
     return income;
 }
 
@@ -293,47 +227,31 @@ function checkDailyReward() {
         if (state.lastLogin !== today && !state.dailyRewardClaimed) {
             state.streak++;
             state.coins += 50;
-            state.energy = Math.min(state.maxEnergy, state.energy + 30);
             state.dailyRewardClaimed = true;
             state.lastLogin = today;
-            showToast('🎁 Ежедневная награда: +50 🪙, +30 ⚡');
+            showToast('🎁 Ежедневная награда: +50 🪙');
             saveGame();
         } else if (state.lastLogin === today) {
             state.dailyRewardClaimed = true;
         }
-    } catch (e) {
-        console.error('Ошибка ежедневной награды:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 // ============================================
-// НАВИГАЦИЯ
+// НАВИГАЦИЯ И UI
 // ============================================
 function navTo(pageId) {
-    console.log('🧭 Навигация:', pageId);
-    
     try {
-        document.querySelectorAll('.page').forEach(p => {
-            p.classList.remove('active');
-        });
-        document.querySelectorAll('.nav-item').forEach(n => {
-            n.classList.remove('active');
-        });
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         
         const targetPage = document.getElementById(`page-${pageId}`);
-        if (targetPage) {
-            targetPage.classList.add('active');
-            console.log('✅ Страница активирована:', pageId);
-        } else {
-            console.error('❌ Страница не найдена:', pageId);
-        }
+        if (targetPage) targetPage.classList.add('active');
         
         const navIndex = ['roadmap', 'city', 'shop', 'profile'].indexOf(pageId);
         if (navIndex !== -1) {
             const navItems = document.querySelectorAll('.nav-item');
-            if (navItems[navIndex]) {
-                navItems[navIndex].classList.add('active');
-            }
+            if (navItems[navIndex]) navItems[navIndex].classList.add('active');
         }
         
         if (pageId === 'roadmap') renderRoadmap();
@@ -342,12 +260,8 @@ function navTo(pageId) {
         if (pageId === 'profile') renderProfile();
         
         const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.scrollTop = 0;
-        }
-    } catch (e) {
-        console.error('Ошибка навигации:', e);
-    }
+        if (mainContent) mainContent.scrollTop = 0;
+    } catch (e) { console.error(e); }
 }
 
 function updateUI() {
@@ -362,19 +276,12 @@ function updateUI() {
             'profileXp': state.xp % 100,
             'cityIncome': calculateIncome().toFixed(1) + ' 🪙/сек',
             'cityBalance': Math.floor(state.cityBalance),
-            'cpsDisplay': calculateIncome().toFixed(1),
             'avatarBonus': '+' + calculateBonus().toFixed(1)
         };
         
         for (const [id, value] of Object.entries(elements)) {
             const el = document.getElementById(id);
-            if (el) {
-                if (id === 'xpFill') {
-                    el.style.width = `${value}%`;
-                } else {
-                    el.innerText = value;
-                }
-            }
+            if (el) el.innerText = value;
         }
         
         const icon = getAvatarIcon();
@@ -383,29 +290,12 @@ function updateUI() {
             if (el) el.innerText = icon;
         });
         
-        // ➕ Обновление жизней и энергии
+        // 🔋 Бесконечные ресурсы отображаются как ∞
         const livesEl = document.getElementById('livesDisplay');
         const energyEl = document.getElementById('energyDisplay');
-        
-        if (livesEl) {
-            livesEl.innerText = state.lives;
-            const parent = livesEl.parentElement;
-            if (parent) {
-                parent.style.color = state.lives <= 1 ? 'var(--error)' : '#ff4757';
-                parent.style.animation = state.lives <= 1 ? 'pulse 1s infinite' : 'none';
-            }
-        }
-        if (energyEl) {
-            energyEl.innerText = state.energy;
-            const parent = energyEl.parentElement;
-            if (parent) {
-                parent.style.color = state.energy <= 20 ? 'var(--error)' : '#7f2aff';
-                parent.style.animation = state.energy <= 20 ? 'pulse 1s infinite' : 'none';
-            }
-        }
-    } catch (e) {
-        console.error('Ошибка обновления UI:', e);
-    }
+        if (livesEl) livesEl.innerText = '∞';
+        if (energyEl) energyEl.innerText = '∞';
+    } catch (e) { console.error(e); }
 }
 
 function calculateBonus() {
@@ -436,9 +326,7 @@ function showToast(msg) {
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 3000);
         }
-    } catch (e) {
-        console.error('Ошибка toast:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 // ============================================
@@ -447,13 +335,9 @@ function showToast(msg) {
 function renderRoadmap() {
     try {
         const container = document.getElementById('roadmapNodes');
-        if (!container) {
-            console.error('Контейнер roadmapNodes не найден!');
-            return;
-        }
+        if (!container) return;
         container.innerHTML = '';
         
-        const totalModules = DB.modules.length;
         const containerWidth = container.offsetWidth || 700;
         const nodeSpacing = 320;
         const centerX = containerWidth / 2;
@@ -461,25 +345,18 @@ function renderRoadmap() {
         
         DB.modules.forEach((mod, index) => {
             const offset = index % 2 === 0 ? -220 : 220;
-            const x = centerX + offset;
-            const y = 150 + (index * nodeSpacing);
-            nodePositions.push({ x, y, index, mod });
+            nodePositions.push({ x: centerX + offset, y: 150 + (index * nodeSpacing), index, mod });
         });
         
         for (let i = 0; i < nodePositions.length - 1; i++) {
             const start = nodePositions[i];
             const end = nodePositions[i + 1];
-            const numBalls = 3;
-            for (let j = 1; j <= numBalls; j++) {
-                const t = j / (numBalls + 1);
-                const ballX = start.x + (end.x - start.x) * t;
-                const ballY = start.y + (end.y - start.y) * t;
-                const sizeClass = j % 2 === 0 ? 'medium' : 'small';
+            for (let j = 1; j <= 3; j++) {
+                const t = j / 4;
                 const ball = document.createElement('div');
-                ball.className = `path-ball ${sizeClass}`;
-                ball.style.left = `${ballX}px`;
-                ball.style.top = `${ballY}px`;
-                ball.style.zIndex = '0';
+                ball.className = `path-ball ${j % 2 === 0 ? 'medium' : 'small'}`;
+                ball.style.left = `${start.x + (end.x - start.x) * t}px`;
+                ball.style.top = `${start.y + (end.y - start.y) * t}px`;
                 container.appendChild(ball);
             }
         }
@@ -487,12 +364,10 @@ function renderRoadmap() {
         nodePositions.forEach(({ x, y, index, mod }) => {
             const modState = state.progress[mod.id] || { levelIndex: 0, attempts: 0, gold: false, completed: false };
             const prevMod = DB.modules.find(m => m.id === mod.id - 1);
-            const prevDone = prevMod ? (state.progress[prevMod.id] && state.progress[prevMod.id].completed) : true;
+            const prevDone = prevMod ? (state.progress[prevMod.id]?.completed) : true;
             const isLocked = !prevDone && mod.id !== 9;
             
-            let statusClass = '';
-            if (modState.completed) statusClass = 'completed';
-            else if (modState.levelIndex > 0 || mod.id === 9) statusClass = 'current';
+            let statusClass = modState.completed ? 'completed' : (modState.levelIndex > 0 || mod.id === 9 ? 'current' : '');
             if (isLocked) statusClass = 'locked';
             
             const totalLevels = mod.levels || 3;
@@ -504,37 +379,28 @@ function renderRoadmap() {
             }).join('');
             
             const cardOffset = index % 2 === 0 ? 140 : -300;
-            const nodeHTML = `
-                <div class="roadmap-node ${statusClass}" style="left: ${x - 45}px; top: ${y - 45}px;" onclick="${isLocked ? '' : `openModule(${mod.id})`}">
+            container.innerHTML += `
+                <div class="roadmap-node ${statusClass}" style="left:${x-45}px;top:${y-45}px;" onclick="${isLocked ? '' : `openModule(${mod.id})`}">
                     ${modState.gold ? '<div class="gold-crown">👑</div>' : ''}
                     ${isLocked ? '<div class="node-lock">🔒</div>' : ''}
                     ${modState.levelIndex === 0 && mod.id === 9 ? '<div class="start-button">▶ START</div>' : ''}
                     <div class="node-circle">${mod.id}<div class="node-number">${mod.icon}</div></div>
-                    <div class="node-info" style="left: ${cardOffset}px;">
+                    <div class="node-info" style="left:${cardOffset}px;">
                         <div class="node-title">${mod.title}</div>
                         <div class="node-subtitle">${mod.subtitle}</div>
                         <div class="node-progress">${progressDots}</div>
-                        ${modState.completed ? '<div style="margin-top:10px; font-size:0.75rem; color:var(--success); font-weight:600;">✅ Пройдено</div>' : ''}
+                        ${modState.completed ? '<div style="margin-top:10px;font-size:0.75rem;color:var(--success);font-weight:600;">✅ Пройдено</div>' : ''}
                     </div>
                 </div>`;
-            container.innerHTML += nodeHTML;
         });
         
         const lastNode = nodePositions[nodePositions.length - 1];
         if (lastNode) {
             const spacer = document.createElement('div');
-            spacer.style.height = '250px';
-            spacer.style.position = 'absolute';
-            spacer.style.left = '0';
-            spacer.style.top = `${lastNode.y + 150}px`;
-            spacer.style.width = '100%';
+            spacer.style.cssText = `height:250px;position:absolute;left:0;top:${lastNode.y+150}px;width:100%;`;
             container.appendChild(spacer);
         }
-        
-        console.log('✅ Дорожная карта отрисована');
-    } catch (e) {
-        console.error('❌ Ошибка отрисовки дорожной карты:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 let currentQuiz = { moduleId: null, level: 1, topic: null, questions: [], index: 0, correctCount: 0, streak: 0 };
@@ -542,30 +408,18 @@ let selectedOptions = [];
 
 function openModule(modId) {
     try {
-        // ➕ Проверка ресурсов перед началом модуля
-        if (state.lives < 1) {
-            showToast('❤️ Жизни закончились! Восстановите их.');
-            showRestoreLivesModal();
-            return;
-        }
-        if (state.energy < 10) {
-            showToast('⚡ Недостаточно энергии! (нужно 10)');
-            showRestoreEnergyModal();
-            return;
-        }
-        
         const mod = DB.modules.find(m => m.id === modId);
         const modState = state.progress[modId] || { levelIndex: 0, attempts: 0, gold: false, completed: false };
         if (modState.completed) { showToast('✅ Модуль уже пройден!'); return; }
         const topicName = mod.topics[modState.levelIndex] || `Уровень ${modState.levelIndex + 1}`;
         let qs = DB.questions[modId]?.filter(q => q.level === (modState.levelIndex + 1)) || [];
-        if (qs.length === 0) { qs = [{ level: modState.levelIndex + 1, q: `Вопрос уровня ${modState.levelIndex + 1}`, options: ["Верно", "Неверно", "Не знаю"], correct: 0, explanation: "Правильный ответ." }]; }
+        if (qs.length === 0) {
+            qs = [{ level: modState.levelIndex + 1, q: `Вопрос уровня ${modState.levelIndex + 1}`, options: ["Верно", "Неверно", "Не знаю"], correct: 0, explanation: "Правильный ответ." }];
+        }
         currentQuiz = { moduleId: modId, level: modState.levelIndex + 1, topic: topicName, questions: qs, index: 0, correctCount: 0, streak: 0 };
         navTo('quiz');
         renderQuestion();
-    } catch (e) {
-        console.error('Ошибка открытия модуля:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function renderQuestion() {
@@ -576,9 +430,11 @@ function renderQuestion() {
         document.getElementById('quizTotal').innerText = currentQuiz.questions.length;
         document.getElementById('quizStreak').innerText = currentQuiz.streak;
         document.getElementById('questionText').innerText = q.q;
+        
         const optsContainer = document.getElementById('optionsContainer');
         optsContainer.innerHTML = '';
         selectedOptions = [];
+        
         q.options.forEach((opt, idx) => {
             const div = document.createElement('div');
             div.className = 'quiz-option';
@@ -586,13 +442,11 @@ function renderQuestion() {
             div.onclick = () => selectOption(idx, div);
             optsContainer.appendChild(div);
         });
+        
         document.getElementById('checkAnswerBtn').style.display = 'block';
         document.getElementById('nextQuestionBtn').style.display = 'none';
         document.getElementById('quizResult').classList.add('hidden');
-        updateUI();
-    } catch (e) {
-        console.error('Ошибка отрисовки вопроса:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function selectOption(idx, el) {
@@ -612,32 +466,12 @@ function selectOption(idx, el) {
             document.querySelectorAll('.quiz-option').forEach(d => d.classList.remove('selected'));
             el.classList.add('selected');
         }
-    } catch (e) {
-        console.error('Ошибка выбора ответа:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function checkAnswer() {
     try {
-        // ➕ Проверка ресурсов
-        if (state.energy < 10) {
-            showToast('⚡ Недостаточно энергии! (нужно 10)');
-            showRestoreEnergyModal();
-            return;
-        }
-        if (state.lives < 1) {
-            showToast('❤️ Жизни закончились!');
-            showRestoreLivesModal();
-            return;
-        }
-        
-        if (selectedOptions.length === 0) { 
-            showToast('⚠️ Выберите вариант ответа!'); 
-            return; 
-        }
-        
-        // ➕ Тратим энергию
-        state.energy -= 10;
+        if (selectedOptions.length === 0) { showToast('⚠️ Выберите вариант ответа!'); return; }
         
         const q = currentQuiz.questions[currentQuiz.index];
         const opts = document.querySelectorAll('.quiz-option');
@@ -659,36 +493,21 @@ function checkAnswer() {
             currentQuiz.streak++;
             state.xp += 10;
             state.coins += 5;
-            // ➕ Бонус энергии за правильный ответ
-            state.energy = Math.min(state.maxEnergy, state.energy + 2);
             document.getElementById('quizResult').classList.remove('hidden');
             document.getElementById('quizResult').innerHTML = `<div class="result-icon">✅</div><h4>Отлично!</h4><p>${q.explanation || 'Правильный ответ!'}</p><button class="btn-secondary" onclick="showExplanation()">📖 Пояснение</button>`;
-            showToast(`🎯 Верно! +10 XP, +5 🪙, +2 ⚡`);
+            showToast(`🎯 Верно! +10 XP, +5 🪙`);
         } else {
             selectedOptions.forEach(idx => opts[idx].classList.add('wrong'));
-            if (Array.isArray(q.correct)) { 
-                q.correct.forEach(idx => opts[idx].classList.add('correct')); 
-            } else { 
-                opts[q.correct].classList.add('correct'); 
-            }
+            if (Array.isArray(q.correct)) q.correct.forEach(idx => opts[idx].classList.add('correct'));
+            else opts[q.correct].classList.add('correct');
+            
             currentQuiz.streak = 0;
-            // ➕ Тратим жизнь за ошибку
-            state.lives -= 1;
             document.getElementById('quizResult').classList.remove('hidden');
             document.getElementById('quizResult').innerHTML = `<div class="result-icon">❌</div><h4 style="color:var(--error)">Ошибка</h4><p>${q.explanation || 'Правильный ответ подсвечен.'}</p>`;
-            showToast(`❌ Ошибка! -1 ❤️ Осталось: ${state.lives}`);
-            
-            // ➕ Если жизни кончились
-            if (state.lives <= 0) {
-                setTimeout(() => showRestoreLivesModal(), 1500);
-            }
+            showToast('❌ Ошибка! Попробуйте еще раз.');
         }
-        
-        updateUI();
         saveGame();
-    } catch (e) {
-        console.error('Ошибка проверки ответа:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function showExplanation() {
@@ -699,19 +518,15 @@ function showExplanation() {
 function nextQuestion() {
     currentQuiz.index++;
     selectedOptions = [];
-    if (currentQuiz.index < currentQuiz.questions.length) { 
-        renderQuestion(); 
-    } else { 
-        finishModule(); 
-    }
+    if (currentQuiz.index < currentQuiz.questions.length) renderQuestion();
+    else finishModule();
 }
 
 function finishModule() {
     try {
         const mod = DB.modules.find(m => m.id === currentQuiz.moduleId);
-        if (!state.progress[currentQuiz.moduleId]) { 
-            state.progress[currentQuiz.moduleId] = { levelIndex: 0, attempts: 0, gold: false, completed: false }; 
-        }
+        if (!state.progress[currentQuiz.moduleId]) state.progress[currentQuiz.moduleId] = { levelIndex: 0, attempts: 0, gold: false, completed: false };
+        
         const p = state.progress[currentQuiz.moduleId];
         p.attempts++;
         const accuracy = currentQuiz.correctCount / currentQuiz.questions.length;
@@ -743,140 +558,7 @@ function finishModule() {
         checkAchievement('first_blood');
         saveGame();
         navTo('roadmap');
-    } catch (e) {
-        console.error('Ошибка завершения модуля:', e);
-    }
-}
-
-// ============================================
-// 🔋 МОДАЛЬНЫЕ ОКНА: ВОССТАНОВЛЕНИЕ РЕСУРСОВ
-// ============================================
-
-function showRestoreEnergyModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal glass-panel glow-border" style="max-width:320px;margin:20px auto;padding:25px;text-align:center;">
-            <h3 style="margin-bottom:15px;">⚡ Восстановить энергию</h3>
-            <p style="margin-bottom:20px;color:var(--text-sec)">
-                Энергия нужна для прохождения тестов.<br>
-                Выберите способ восстановления:
-            </p>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                <button class="btn-primary" onclick="restoreEnergyCoins(); closeModal(this)">
-                    💰 50 🪙 → +30 ⚡
-                </button>
-                <button class="btn-secondary" onclick="restoreEnergyDaily(); closeModal(this)">
-                    🎁 Ежедневный бонус → +50 ⚡
-                </button>
-                <button class="btn-secondary" onclick="restoreEnergyWait(); closeModal(this)">
-                    ⏳ Ждать регенерации (1 ⚡ / 30 сек)
-                </button>
-            </div>
-            <button class="btn-icon" style="margin-top:15px" onclick="closeModal(this)">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
-    `;
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-    document.body.appendChild(modal);
-}
-
-function showRestoreLivesModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal glass-panel glow-border" style="max-width:320px;margin:20px auto;padding:25px;text-align:center;">
-            <h3 style="margin-bottom:15px;color:var(--fire)">❤️ Жизни закончились</h3>
-            <p style="margin-bottom:20px;color:var(--text-sec)">
-                Не переживайте! Жизни восстанавливаются со временем.<br>
-                Или восстановите сейчас:
-            </p>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                <button class="btn-primary" onclick="restoreLivesCoins(); closeModal(this)">
-                    💰 100 🪙 → +3 ❤️
-                </button>
-                <button class="btn-secondary" onclick="restoreLivesStreak(); closeModal(this)">
-                    🔥 Использовать стрик → +2 ❤️
-                </button>
-                <button class="btn-secondary" onclick="restoreLivesWait(); closeModal(this)">
-                    ⏳ Ждать (1 ❤️ / 10 мин)
-                </button>
-            </div>
-            <button class="btn-icon" style="margin-top:15px" onclick="closeModal(this)">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
-    `;
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-    document.body.appendChild(modal);
-}
-
-function closeModal(btn) {
-    const modal = btn.closest('.modal-overlay');
-    if (modal) {
-        modal.style.opacity = '0';
-        setTimeout(() => modal.remove(), 200);
-    }
-}
-
-// ➕ Функции восстановления энергии
-function restoreEnergyCoins() {
-    if (state.coins >= 50) {
-        state.coins -= 50;
-        state.energy = Math.min(state.maxEnergy, state.energy + 30);
-        showToast('✅ Энергия восстановлена! +30 ⚡');
-        saveGame();
-        updateUI();
-    } else {
-        showToast('❌ Недостаточно монет!');
-    }
-}
-
-function restoreEnergyDaily() {
-    const today = new Date().toDateString();
-    if (state.lastDailyEnergy !== today) {
-        state.energy = Math.min(state.maxEnergy, state.energy + 50);
-        state.lastDailyEnergy = today;
-        showToast('🎁 Ежедневный бонус: +50 ⚡');
-        saveGame();
-        updateUI();
-    } else {
-        showToast('⏳ Уже использовали сегодня');
-    }
-}
-
-function restoreEnergyWait() {
-    showToast('⏳ Энергия восстанавливается автоматически');
-}
-
-// ➕ Функции восстановления жизней
-function restoreLivesCoins() {
-    if (state.coins >= 100) {
-        state.coins -= 100;
-        state.lives = Math.min(state.maxLives, state.lives + 3);
-        showToast('✅ Жизни восстановлены! +3 ❤️');
-        saveGame();
-        updateUI();
-    } else {
-        showToast('❌ Недостаточно монет!');
-    }
-}
-
-function restoreLivesStreak() {
-    if (state.streak >= 3) {
-        state.streak -= 3;
-        state.lives = Math.min(state.maxLives, state.lives + 2);
-        showToast('🔥 Стрик использован: +2 ❤️');
-        saveGame();
-        updateUI();
-    } else {
-        showToast('⚠️ Нужен стрик 3+ дня');
-    }
-}
-
-function restoreLivesWait() {
-    showToast('❤️ Жизни восстанавливаются: 1 каждые 10 минут');
+    } catch (e) { console.error(e); }
 }
 
 // ============================================
@@ -886,9 +568,10 @@ function renderCity() {
     try {
         const grid = document.getElementById('buildingsGrid');
         const mapGrid = document.getElementById('mapGrid');
-        if (!grid || !mapGrid) { console.error('Элементы города не найдены!'); return; }
+        if (!grid || !mapGrid) return;
         grid.innerHTML = '';
         mapGrid.innerHTML = '';
+        
         for (let i = 0; i < 25; i++) {
             const cell = document.createElement('div');
             cell.className = 'map-cell';
@@ -910,24 +593,22 @@ function renderCity() {
             }
             mapGrid.appendChild(cell);
         }
+        
         DB.buildings.forEach(b => {
             const owned = state.buildings[b.id] || { count: 0, level: 1 };
             const canBuy = state.coins >= b.cost;
             grid.innerHTML += `<div class="building-card ${owned.count > 0 ? 'owned' : ''}"><span class="building-icon">${b.icon}</span><div class="building-name">${b.name}</div><div class="building-income">+${b.income} 🪙/сек</div><div class="building-level">Уровень: ${owned.level}</div><div class="building-cost">${b.cost.toLocaleString()} 🪙</div><div style="font-size:0.75rem; color:var(--text-sec); margin-bottom:10px;">У вас: ${owned.count}</div><button class="btn-buy" ${!canBuy ? 'disabled' : ''} onclick="buyBuilding('${b.id}')">${canBuy ? 'Купить' : 'Не хватает'}</button></div>`;
         });
-    } catch (e) {
-        console.error('Ошибка отрисовки города:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 let selectedBuildingForPlacement = null;
-
 function buyBuilding(id) {
     try {
         const b = DB.buildings.find(x => x.id === id);
         if (state.coins >= b.cost) {
             state.coins -= b.cost;
-            if (!state.buildings[id]) { state.buildings[id] = { count: 0, level: 1 }; }
+            if (!state.buildings[id]) state.buildings[id] = { count: 0, level: 1 };
             state.buildings[id].count++;
             state.buildings[id].level = Math.min(state.buildings[id].level + 1, 10);
             b.cost = Math.floor(b.cost * 1.15);
@@ -936,37 +617,23 @@ function buyBuilding(id) {
             saveGame();
             renderCity();
             checkAchievement('magnate');
-        } else { 
-            showToast('❌ Недостаточно монет!'); 
-        }
-    } catch (e) {
-        console.error('Ошибка покупки здания:', e);
-    }
+        } else { showToast('❌ Недостаточно монет!'); }
+    } catch (e) { console.error(e); }
 }
 
 function placeBuilding(cellIndex) {
     try {
-        if (!selectedBuildingForPlacement) { 
-            showToast('⚠️ Сначала купите здание!'); 
-            return; 
-        }
+        if (!selectedBuildingForPlacement) { showToast('⚠️ Сначала купите здание!'); return; }
         for (const positions of Object.values(state.buildingPositions)) { 
-            if (positions.includes(cellIndex)) { 
-                showToast('⚠️ Эта ячейка занята!'); 
-                return; 
-            } 
+            if (positions.includes(cellIndex)) { showToast('⚠️ Эта ячейка занята!'); return; } 
         }
-        if (!state.buildingPositions[selectedBuildingForPlacement]) { 
-            state.buildingPositions[selectedBuildingForPlacement] = []; 
-        }
+        if (!state.buildingPositions[selectedBuildingForPlacement]) state.buildingPositions[selectedBuildingForPlacement] = [];
         state.buildingPositions[selectedBuildingForPlacement].push(cellIndex);
         selectedBuildingForPlacement = null;
         showToast('🏗️ Здание размещено!');
         saveGame();
         renderCity();
-    } catch (e) {
-        console.error('Ошибка размещения здания:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function showBuildingInfo(building) {
@@ -982,7 +649,6 @@ function zoomMap(direction) {
     if (grid) grid.style.transform = `scale(${state.mapZoom})`; 
     saveGame(); 
 }
-
 function resetMap() { 
     state.mapZoom = 1; 
     const grid = document.getElementById('mapGrid');
@@ -996,7 +662,7 @@ function resetMap() {
 function renderShop(filter = 'all') {
     try {
         const grid = document.getElementById('shopGrid');
-        if (!grid) { console.error('ShopGrid не найден!'); return; }
+        if (!grid) return;
         grid.innerHTML = '';
         let count = 0;
         DB.shopItems.forEach(item => {
@@ -1008,17 +674,13 @@ function renderShop(filter = 'all') {
         });
         document.getElementById('shopCount').innerText = `${count} предметов`;
         updateUI();
-    } catch (e) {
-        console.error('Ошибка отрисовки магазина:', e);
-    }
+    } catch (e) { console.error(e); }
 }
-
 function filterShop(type) { 
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); 
     event.target.classList.add('active'); 
     renderShop(type); 
 }
-
 function handleShopClick(id) {
     try {
         const item = DB.shopItems.find(i => i.id === id);
@@ -1036,15 +698,10 @@ function handleShopClick(id) {
                 saveGame(); 
                 renderShop(); 
                 showToast(`🛒 Куплено: ${item.name}`); 
-            } else { 
-                showToast('❌ Недостаточно монет!'); 
-            }
+            } else { showToast('❌ Недостаточно монет!'); }
         }
-    } catch (e) {
-        console.error('Ошибка покупки предмета:', e);
-    }
+    } catch (e) { console.error(e); }
 }
-
 function saveAvatar() { showToast('💾 Внешность сохранена!'); }
 function resetAvatar() { 
     state.equipped = { hair: 'hair_default', clothes: 'cloth_default', acc: 'acc_none' }; 
@@ -1060,7 +717,7 @@ function renderProfile() {
     try {
         updateUI();
         const list = document.getElementById('achievementsList');
-        if (!list) { console.error('AchievementsList не найден!'); return; }
+        if (!list) return;
         list.innerHTML = '';
         const achievements = [
             { id: 'first_blood', icon: '🎯', name: 'Первая кровь', desc: 'Реши первый тест', unlocked: state.achievements.includes('first_blood') },
@@ -1073,11 +730,8 @@ function renderProfile() {
         achievements.forEach(ach => {
             list.innerHTML += `<div class="achievement-item ${ach.unlocked ? 'unlocked' : 'locked'}"><span class="ach-icon">${ach.unlocked ? ach.icon : '🔒'}</span><div><strong>${ach.name}</strong><p>${ach.desc}</p></div></div>`;
         });
-    } catch (e) {
-        console.error('Ошибка отрисовки профиля:', e);
-    }
+    } catch (e) { console.error(e); }
 }
-
 function checkAchievement(id) { 
     if (!state.achievements.includes(id)) { 
         state.achievements.push(id); 
@@ -1085,7 +739,6 @@ function checkAchievement(id) {
         saveGame(); 
     } 
 }
-
 function showCelebration() {
     try {
         const container = document.createElement('div');
@@ -1099,9 +752,7 @@ function showCelebration() {
         }
         document.body.appendChild(container);
         setTimeout(() => container.remove(), 6000);
-    } catch (e) {
-        console.error('Ошибка празднования:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 // ============================================
@@ -1109,12 +760,7 @@ function showCelebration() {
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM загружен, запускаем приложение...');
-    console.log('📱 User Agent:', navigator.userAgent);
-    console.log('📱 LocalStorage доступен:', !!window.localStorage);
-    
-    try {
-        init();
-    } catch (e) {
+    try { init(); } catch (e) {
         console.error('❌ Критическая ошибка при запуске:', e);
         alert('Произошла ошибка при загрузке приложения. Попробуйте обновить страницу.');
     }
